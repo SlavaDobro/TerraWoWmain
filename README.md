@@ -306,7 +306,7 @@ ID языков: `common orcish dwarvish darnassian gnomish draenei gilnean gutt
 | `Custody.java`, `ItemRules.java` | Безопасное хранение предметов, что можно класть в банк и в почту |
 | `VaultBridge.java` | Наши деньги для Vault (1 единица Vault = 1 медная) |
 | `EconomyApi.java`, `EconomyCommittedEvent.java`, `LedgerCommittedEvent.java` | API и события для других плагинов ([docs/API.md](docs/API.md)) |
-| `Placeholders.java` | Плейсхолдеры `%twm_gold%`, `%twm_raw_<валюта>%` |
+| `Placeholders.java` | Плейсхолдеры `%twm_gold%`, `%twm_raw_<валюта>%`, `%twm_faction%` (alliance / horde / none), `%twm_race%` (id расы или none) — их использует HUD |
 | `XpBank.java` | Банк обычного опыта (модуль выключен) |
 | `Icons.java` | Иконки меню: `MATERIAL`, `nexo:<id>` или `mmo:<TYPE>:<ID>` |
 | `RuntimeChecks.java` | Самопроверка на живом сервере (`testing.self-test`) |

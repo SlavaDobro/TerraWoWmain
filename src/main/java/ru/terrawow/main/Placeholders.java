@@ -26,8 +26,19 @@ public final class Placeholders extends PlaceholderExpansion {
     return true;
   }
 
+  /**
+   * %twm_faction% — alliance / horde / none (no character yet), %twm_race% — race id or none;
+   * used by the HUD (faction shield). Everything else is a currency: %twm_gold%, %twm_raw_gold%.
+   */
   public String onRequest(OfflinePlayer player, String param) {
     if (player == null) return "";
+    if (param.equals("race") || param.equals("faction")) {
+      String race = p.races == null ? null : p.races.raceId(player.getUniqueId());
+      if (race == null) return "none";
+      if (param.equals("race")) return race;
+      String f = p.races.factionOf(race);
+      return f == null ? "none" : f;
+    }
     String c = param.startsWith("raw_") ? param.substring(4) : param;
     try {
       long n = p.ledger.cached(player.getUniqueId().toString(), c);
