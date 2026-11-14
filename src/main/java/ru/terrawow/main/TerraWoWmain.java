@@ -25,6 +25,7 @@ public final class TerraWoWmain extends JavaPlugin implements Listener {
   public Commands commands;
   public ru.terrawow.main.collection.CollectionModule collections;
   public ru.terrawow.main.race.RaceModule races;
+  public ru.terrawow.main.chat.ChatModule chat;
   public ru.terrawow.main.menu.MenuModule menuModule;
   private Database db;
   private ThreadPoolExecutor worker;
@@ -178,6 +179,14 @@ public final class TerraWoWmain extends JavaPlugin implements Listener {
           races = null;
           getLogger().log(java.util.logging.Level.SEVERE, "Модуль рас не запущен", e);
         }
+      if (getConfig().getBoolean("modules.chat", true))
+        try { // WoW chat with languages; a broken languages.yml must not stop the economy
+          chat = new ru.terrawow.main.chat.ChatModule(this, races);
+          chat.enable();
+        } catch (Exception e) {
+          chat = null;
+          getLogger().log(java.util.logging.Level.SEVERE, "Чат с языками не запущен (languages.yml)", e);
+        }
       ru.terrawow.main.ui.UiIcons.enable(getConfig().getBoolean("ui-icons", true));
       if (getConfig().getBoolean("ui-sounds.enabled", true)
           && getConfig().getConfigurationSection("ui-sounds") != null)
@@ -229,6 +238,7 @@ public final class TerraWoWmain extends JavaPlugin implements Listener {
   public void onDisable() {
     if (collections != null) collections.disable();
     if (races != null) races.disable();
+    if (chat != null) chat.disable();
     economyHealthy = false;
     Bukkit.getServicesManager().unregisterAll(this);
     for (Player pl : Bukkit.getOnlinePlayers())

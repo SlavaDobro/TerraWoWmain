@@ -158,6 +158,20 @@ ui-icons: true
 # заголовок окна = фон + старый текст золотом; стеклянные рамки не ставятся. Окна — те же, что в ui-sounds.windows.
 ui-backgrounds: true
 
+# Чат как в WoW (modules.chat): только локальный — «Ник говорит:» в радиусе say-range, глобального чата нет.
+# Ник цветом фракции, языки рас (languages.yml): кто язык не знает, видит бессмыслицу; пузыри над головой по
+# тому же правилу; шёпот (/msg …) игроку без общего языка запрещён. У CMI формат, дальность и пузыри выключены.
+# Крик (сообщение с yell-prefix слышно в радиусе yell-range) выключен: yell-prefix: ''. Включить: yell-prefix: '!'.
+chat:
+  say-range: 52
+  yell-prefix: ''
+  yell-range: 300
+  bubbles: true
+  bubble-seconds: 6
+  heads: true
+  faction-colors: {alliance: '#3FA7FF', horde: '#FF4A3A'}
+  whisper-commands: [msg, tell, w, whisper, m, t, pm, dm]
+
 # Звуки окон (сервера, плагина и MMOCore): открыть, закрыть, перейти в другое окно / перелистнуть.
 # Звуки в ресурспаке Nexo: tools/install_ui_sounds.py. Пустая строка — без звука.
 ui-sounds:

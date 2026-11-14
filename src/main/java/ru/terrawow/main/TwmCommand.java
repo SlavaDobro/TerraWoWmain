@@ -16,11 +16,12 @@ import ru.terrawow.main.collection.Text;
  * /twm race …                    раса: карточка, выбор, set/reset/info      → RaceModule
  * /twm racial                    расовая способность                        → RaceModule
  * /twm menu [id] [ник]            меню сервера (/menu = главное)             → MenuModule
+ * /twm lang give|take|list …       языки игрока (twm.admin); /lang — свой язык → ChatModule
  * /twm reload                    перечитать collections.yml и races.yml (twm.admin)
  * </pre>
  */
 final class TwmCommand implements CommandExecutor, TabCompleter {
-  private static final List<String> ROOT = List.of("help", "menu", "economy", "mount", "pet", "race", "racial", "reload");
+  private static final List<String> ROOT = List.of("help", "menu", "economy", "mount", "pet", "race", "racial", "lang", "reload");
   private final TerraWoWmain p;
 
   TwmCommand(TerraWoWmain p) {
@@ -56,6 +57,10 @@ final class TwmCommand implements CommandExecutor, TabCompleter {
         if (p.menuModule == null) off(s, "меню (modules.menus)");
         else p.menuModule.command(s, rest);
       }
+      case "lang", "language" -> {
+        if (p.chat == null) off(s, "чата и языков (modules.chat)");
+        else p.chat.admin(s, rest);
+      }
       case "reload" -> reload(s);
       default -> s.sendMessage(Text.c("&cНеизвестный раздел: " + a[0] + ". &7/twm help"));
     }
@@ -74,6 +79,7 @@ final class TwmCommand implements CommandExecutor, TabCompleter {
     if (p.collections != null) p.collections.command(s, Kind.MOUNT, new String[] {"reload"});
     if (p.races != null) p.races.race(s, new String[] {"reload"});
     if (p.menuModule != null) p.menuModule.command(s, new String[] {"reload"});
+    if (p.chat != null) p.chat.admin(s, new String[] {"reload"});
     s.sendMessage(Text.c("&7Экономика (config.yml, messages.yml, ui.yml) применяется только перезапуском сервера."));
   }
 
@@ -84,6 +90,8 @@ final class TwmCommand implements CommandExecutor, TabCompleter {
     s.sendMessage(Text.c("&6/twm mount &7— маунты &8(/mounts, /twm mount help)"));
     s.sendMessage(Text.c("&6/twm pet &7— питомцы &8(/pets, /twm pet help)"));
     s.sendMessage(Text.c("&6/twm race &7— раса &8(/race, /twm race help)  &6/twm racial &7— расовая способность &8(/racial)"));
+    s.sendMessage(Text.c("&6/lang [язык] &7— на каком языке вы говорите"));
+    if (s.hasPermission("twm.admin")) s.sendMessage(Text.c("&6/twm lang give|take|list <ник> [язык] &7— выучить / забыть язык"));
     if (s.hasPermission("twm.admin")) s.sendMessage(Text.c("&6/twm reload &7— перечитать collections.yml и races.yml"));
   }
 
@@ -100,6 +108,7 @@ final class TwmCommand implements CommandExecutor, TabCompleter {
       case "pet", "pets" -> p.collections == null ? List.of() : p.collections.tab(s, Kind.PET, rest);
       case "race" -> p.races == null ? List.of() : p.races.tab(s, rest);
       case "menu", "menus" -> p.menuModule == null ? List.of() : p.menuModule.tab(s, rest);
+      case "lang", "language" -> p.chat == null ? List.of() : p.chat.adminTab(rest);
       default -> List.of();
     };
   }

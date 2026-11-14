@@ -24,7 +24,7 @@ class PluginYmlTest {
     }
     assertEquals("TerraWoWmain", y.getString("name"));
     var commands = y.getConfigurationSection("commands").getKeys(false);
-    assertEquals(java.util.Set.of("twm", "menu", "mounts", "pets", "race", "racial"), commands);
+    assertEquals(java.util.Set.of("twm", "menu", "mounts", "pets", "race", "racial", "lang"), commands);
     // Bukkit YAML treats dots as nesting: every permission must live under the single root "twm"
     assertEquals(java.util.Set.of("twm"), y.getConfigurationSection("permissions").getKeys(false));
     assertTrue(y.isSet("permissions.twm.admin.default"), "twm.admin");

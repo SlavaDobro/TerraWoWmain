@@ -27,6 +27,9 @@ commands:
   racial:
     description: Расовая способность (то же, что /twm racial)
     permission: twm.race
+  lang:
+    description: 'Язык, на котором вы говорите (Всеобщий, Орочий, расовые)'
+    permission: twm.race
   menu:
     description: Главное меню сервера (то же, что /twm menu)
     aliases: [wow]
@@ -100,6 +103,12 @@ permissions:
   twm.race:
     description: Карточка расы, выбор расы, расовая способность
     default: true
+  twm.lang.all:
+    description: 'Понимать все языки в чате (модераторы)'
+    default: op
+  twm.chat.spy:
+    description: 'Слышать чат на любом расстоянии'
+    default: false
   twm.admin:
     description: 'Админ-команды маунтов, питомцев и рас (give/take/unlock/set/reset/reload)'
     default: op

@@ -35,7 +35,7 @@ public final class RaceModule implements Listener, CommandExecutor, TabCompleter
   final RaceMenus menus;
   final Racials racials;
   private final File playersFolder;
-  private final Map<UUID, PlayerRace> data = new HashMap<>();
+  private final Map<UUID, PlayerRace> data = new java.util.concurrent.ConcurrentHashMap<>(); // read by the async chat
   private final NamespacedKey scaleKey;
   private boolean classHook;
 
@@ -78,6 +78,18 @@ public final class RaceModule implements Listener, CommandExecutor, TabCompleter
   }
 
   // ---------------------------------------------------------------- player data
+  /** Race id of the player, or null if no character was created yet. */
+  public String raceId(UUID id) {
+    PlayerRace r = of(id);
+    return r.chosen() ? r.race : null;
+  }
+
+  /** Faction id (alliance / horde) of a race id, or null. */
+  public String factionOf(String raceId) {
+    Race r = raceId == null ? null : config.races.get(raceId);
+    return r == null ? null : r.faction();
+  }
+
   PlayerRace of(UUID id) {
     return data.computeIfAbsent(id, u -> PlayerRace.load(playersFolder, u));
   }
