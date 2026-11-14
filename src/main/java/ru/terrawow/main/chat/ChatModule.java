@@ -30,8 +30,9 @@ import ru.terrawow.main.race.RaceModule;
  * colours, and languages — each listener gets the text in the speaker's language only if they know it,
  * otherwise made-up words (see {@link Languages}). Chat bubbles above the head follow the same rule.
  * Whispers (/msg …) to a player with no common language are blocked, like whispering the enemy faction.
+ * The chat filter (chat-filter.yml, {@link ChatFilter}) and anti-spam check the chat and whispers.
  *
- * <p>CMI keeps its chat filter, mutes and chat rooms; its chat format, range and bubbles must be off
+ * <p>CMI keeps only mutes and warnings; its chat format, range, bubbles and chat filter must be off
  * (tools/cmi_rp_setup.py does it), otherwise CMI would show the real text to everyone.
  */
 public final class ChatModule implements Listener, CommandExecutor, TabCompleter {
@@ -39,6 +40,9 @@ public final class ChatModule implements Listener, CommandExecutor, TabCompleter
   private final RaceModule races; // may be null: then everybody understands everything
   private final NamespacedKey speakKey, learnedKey;
   private Languages langs;
+  private ChatFilter filter;
+  private final Map<UUID, String> lastText = new ConcurrentHashMap<>();
+  private final Map<UUID, Long> lastTime = new ConcurrentHashMap<>();
   private int sayRange, yellRange, bubbleSeconds;
   private String yellPrefix;
   private boolean bubbles, heads;
@@ -73,6 +77,9 @@ public final class ChatModule implements Listener, CommandExecutor, TabCompleter
     File f = new File(plugin.getDataFolder(), "languages.yml");
     if (!f.exists()) plugin.saveResource("languages.yml", false);
     langs = new Languages(YamlConfiguration.loadConfiguration(f));
+    File ff = new File(plugin.getDataFolder(), "chat-filter.yml");
+    if (!ff.exists()) plugin.saveResource("chat-filter.yml", false);
+    filter = new ChatFilter(YamlConfiguration.loadConfiguration(ff));
     ConfigurationSection c = plugin.getConfig().getConfigurationSection("chat");
     if (c == null) c = new YamlConfiguration();
     sayRange = c.getInt("say-range", 50);
@@ -158,6 +165,8 @@ public final class ChatModule implements Listener, CommandExecutor, TabCompleter
     UUID id = e.getPlayer().getUniqueId();
     speak.remove(id);
     learned.remove(id);
+    lastText.remove(id);
+    lastTime.remove(id);
     clearBubbles(id);
   }
 
@@ -172,8 +181,22 @@ public final class ChatModule implements Listener, CommandExecutor, TabCompleter
       text = text.substring(yellPrefix.length()).strip();
       message = Component.text(text);
     }
+    ChatFilter.Rule broken = null;
+    if (!sp.hasPermission("twm.chat.filter.bypass")) {
+      if (spam(sp, text)) {
+        e.setCancelled(true);
+        return;
+      }
+      broken = filter.check(text);
+      if (broken != null && !punish(sp, broken, text)) {
+        e.setCancelled(true);
+        return;
+      }
+    }
     int range = yell ? yellRange : sayRange;
-    if (range > 0) {
+    if (broken != null && broken.action() == ChatFilter.Action.HIDE)
+      e.viewers().removeIf(a -> a instanceof Player v && v != sp); // only the sender sees it
+    else if (range > 0) {
       double r2 = (double) range * range;
       Location at = sp.getLocation();
       e.viewers().removeIf(a -> a instanceof Player v && v != sp && !v.hasPermission("twm.chat.spy")
@@ -197,13 +220,42 @@ public final class ChatModule implements Listener, CommandExecutor, TabCompleter
       if (tag) line = line.append(Component.text("[" + l.name() + "] ", TAG));
       return line.append(ok ? (yell ? original : msg.colorIfAbsent(SAY)) : scrambled);
     });
-    if (hearers.isEmpty())
+    if (hearers.isEmpty() && broken == null)
       sp.sendMessage(Text.c("&8Рядом никого нет — вас не услышали (слышно в радиусе " + sayRange + " блоков)."
           + (yellPrefix.isEmpty() ? "" : " Крикнуть: &7" + yellPrefix + "текст")));
     if (bubbles) {
       final String said = text;
       Bukkit.getScheduler().runTask(plugin, () -> bubble(sp, said, heard, lang, yell, hearers));
     }
+  }
+
+  /** Same text again within anti-spam.seconds: tell the sender and drop it. */
+  private boolean spam(Player p, String text) {
+    long now = System.currentTimeMillis();
+    String prev = lastText.put(p.getUniqueId(), text);
+    Long at = lastTime.put(p.getUniqueId(), now);
+    if (prev != null && at != null && prev.equalsIgnoreCase(text) && now - at < filter.spamSeconds * 1000L) {
+      p.sendMessage(Text.c(filter.spamMessage));
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Applies a broken rule: tells the staff, warns (CMI warning via warn-command) and tells the sender.
+   * Returns true if the message may still go out (hide / notify).
+   */
+  private boolean punish(Player p, ChatFilter.Rule r, String text) {
+    String staff = Text.c(ChatFilter.fill(filter.staffMessage, p.getName(), r.reason(), text));
+    plugin.getLogger().info("[Чат-фильтр " + r.id() + "] " + p.getName() + ": " + text);
+    for (Player s : Bukkit.getOnlinePlayers()) if (s != p && s.hasPermission("twm.chat.staff")) s.sendMessage(staff);
+    if (r.action() != ChatFilter.Action.BLOCK) return true;
+    p.sendMessage(Text.c(ChatFilter.fill(filter.blockedMessage, p.getName(), r.reason(), text)));
+    if (r.warn() && !filter.warnCommand.isBlank()) {
+      String cmd = ChatFilter.fill(filter.warnCommand, p.getName(), r.reason(), text);
+      Bukkit.getScheduler().runTask(plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd));
+    }
+    return false;
   }
 
   private static String level(Player p) {
@@ -271,6 +323,13 @@ public final class ChatModule implements Listener, CommandExecutor, TabCompleter
     if (cmd.contains(":")) cmd = cmd.substring(cmd.indexOf(':') + 1);
     if (!whisperCommands.contains(cmd)) return;
     Player from = e.getPlayer(), to = Bukkit.getPlayerExact(a[1]);
+    if (!from.hasPermission("twm.chat.filter.bypass")) {
+      ChatFilter.Rule r = filter.check(a[2]);
+      if (r != null && (!punish(from, r, a[2]) || r.action() == ChatFilter.Action.HIDE)) {
+        e.setCancelled(true);
+        return;
+      }
+    }
     if (to == null || to == from || all(from) || all(to)) return;
     for (String l : known(from)) if (known(to).contains(l)) return;
     e.setCancelled(true);
@@ -316,7 +375,7 @@ public final class ChatModule implements Listener, CommandExecutor, TabCompleter
     }
     if (a.length >= 1 && a[0].equalsIgnoreCase("reload")) {
       reload();
-      s.sendMessage(Text.c("&aЯзыки и настройки чата перечитаны."));
+      s.sendMessage(Text.c("&aЯзыки, фильтр чата и настройки чата перечитаны."));
       return;
     }
     if (a.length < 2) {

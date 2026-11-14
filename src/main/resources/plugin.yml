@@ -106,6 +106,12 @@ permissions:
   twm.lang.all:
     description: 'Понимать все языки в чате (модераторы)'
     default: op
+  twm.chat.staff:
+    description: 'Получать сообщения фильтра чата (нарушения правил)'
+    default: op
+  twm.chat.filter.bypass:
+    description: 'Не проверяться фильтром чата'
+    default: false
   twm.chat.spy:
     description: 'Слышать чат на любом расстоянии'
     default: false
